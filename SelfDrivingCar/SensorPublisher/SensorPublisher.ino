@@ -6,11 +6,10 @@
 #include <geometry_msgs/Twist.h>
 
 ros::NodeHandle  nh;
+geometry_msgs::Twist sens_msg;
+ros::Publisher chatter("chatter", &sens_msg);
 
-std_msgs::String str_msg;
-ros::Publisher chatter("chatter", &str_msg);
 
-char hello[13] = "hello mundo!";
 
 
 #include <Servo.h>
@@ -54,9 +53,8 @@ void setup() {
 void loop() {
  
 ////////////////////////////////////    ROS    //////////////////////////////////////////////////////////////////
-
-  str_msg.data = hello;
-  chatter.publish( &str_msg );
+  sens_msg.linear.x = 1;
+  chatter.publish( &sens_msg );
   nh.spinOnce();
   delay(1000);
 
@@ -69,24 +67,21 @@ void loop() {
     sum += anVolt;
     delay(1);
   }
-
-
-
   
   inches = sum / avgrange;
   
   cm = inches * 2.54;
 
-
+  sens_msg.linear.x = cm;
+  chatter.publish( &sens_msg );
+  nh.spinOnce();
+  delay(20);
 
   sum = 0;
 
   delay(1);
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
 
 
 
