@@ -14,28 +14,27 @@ Servo servo;
 ros::NodeHandle  nh;
 geometry_msgs::Twist sens_msg;
 geometry_msgs::Twist rec_msg;
-ros::Publisher chatter("chatter", &sens_msg);
+geometry_msgs::Twist lords_command;
+const int pwPin = 6;
+long pulse;
+
+// cambiar el topico a "sensor"
+ros::Publisher sensor("sensor", &sens_msg);
 
 int distance;
 int b1 = 8;
 int b2 = 7;
+long peso;
+
+/// FOTO
+
+long luz;
 
 void messageCb(const geometry_msgs::Twist& toggle_msg){
-  distance = (int)toggle_msg.linear.x;
-    if (distance > 30){
-      digitalWrite(b1, HIGH);
-      digitalWrite(b2, LOW);
-  } else {
-      digitalWrite(b1, LOW);
-      digitalWrite(b2, LOW);
-  }
+  lords_command = toggle_msg;
 }
 
-
-
-ros::Subscriber<geometry_msgs::Twist> sub("chatter", &messageCb );
-
-
+ros::Subscriber<geometry_msgs::Twist> sub("motors", &messageCb );
 
 long anVolt, inches, cm;
 
@@ -50,75 +49,107 @@ void setup() {
   //// ROS node
 
   nh.initNode();
-  nh.advertise(chatter);
+  nh.advertise(sensor);
   nh.subscribe(sub);
+  
 
   /////////////////////////////////// SERVO
 
   servo.attach(9);
-  servo.write(0);
 
-  /////////////////////////////////// BRUSHLESS
+  /////////////////////////////////// DC
 
   pinMode(b1, OUTPUT);
   pinMode(b2, OUTPUT);
+  
+  /////////////////////////////////////// GALGA
 
-  ///////////////////////////////////////
- 
+  pinMode(A12,INPUT);
+
+  /////////////////////////////////////// FOTORRESISTENCIA
+
+  pinMode(A7,INPUT);
+
+  ////////// LUZ
+
+  pinMode(50, OUTPUT);
+  
 }
 
 void loop() {
+
+/////// FOTORRESISTENCIA Y LUZ
+
+luz = analogRead(A7);
  
 ////////////////////////////////////    ROS    //////////////////////////////////////////////////////////////////
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////// SONAR ///////////////////////////////////////////////////////////
-  for (int i = 0; i < avgrange ; i++)
+ /* for (int i = 0; i < avgrange ; i++)
 
   {
     anVolt = analogRead(A0) / 2;
     sum += anVolt;
-    delay(1);
+    delay(100);
+  }
+*/
+
+  pulse = pulseIn(pwPin, HIGH);
+  inches = pulse / 147; 
+  cm = inches * 2.54 + 4;
+
+  // Obtener distancia
+  sens_msg.linear.x = cm;
+
+  // Obtener peso
+
+  peso = analogRead(A12);
+  
+  sens_msg.linear.y = peso;
+
+  // Obtener luz
+
+  sens_msg.linear.z = luz;
+
+  if(sens_msg.linear.z < 2){
+  digitalWrite(50, HIGH);
+ } else {
+  digitalWrite(50, LOW);
   }
   
-  inches = sum / avgrange;
-  
-  cm = inches * 2.54;
-
-  // publicar distancia
-  sens_msg.linear.x = cm;
-  sens_msg.linear.y = distance;
-  chatter.publish( &sens_msg );
+  sensor.publish(&sens_msg);
   nh.spinOnce();
   delay(20);
 
+  cm = 0;
   sum = 0;
 
-  delay(1);
-
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
 
   ///////////////////////////////////       MOTORES //////////////////////////////////////////////////////////////////////////77
 
 
   ///// 1.- SERVO
-
-
   servo.write(90);
-  delay(1000);
-  servo.write(180);
-  delay(1000);
-  servo.write(90);
-  delay(1000);
-  servo.write(180);
+  ///// 2.- Motor
 
 
-  ///// 2.- Brushless
+  if (lords_command.linear.x == -1){
+      digitalWrite(b1, LOW);
+      digitalWrite(b2, HIGH);
+  } else if (lords_command.linear.x == 1) {
+      digitalWrite(b1, HIGH);
+      digitalWrite(b2, LOW);
+      if (lords_command.linear.y == 2) {
+         servo.write(180);
+      }
+  } else if (lords_command.linear.x == 0) {
+      digitalWrite(b1, LOW);
+      digitalWrite(b2, LOW);
+  } 
 
-
-
+  delay(500);
 
 }
